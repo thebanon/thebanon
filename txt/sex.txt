@@ -1,0 +1,5 @@
+0 - a - none
+1 - auto - self
+2 - homo - same
+3 - bi - both
+4 - un - else

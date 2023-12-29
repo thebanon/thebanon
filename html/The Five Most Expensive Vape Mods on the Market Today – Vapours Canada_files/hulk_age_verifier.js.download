@@ -1,0 +1,569 @@
+function hulkAVIsValidRegion(regionals, is_restricted_region = false, data = {}, popup_setting = {}){
+	var shop = Shopify.shop
+	var xhttp = new XMLHttpRequest();
+	
+	xhttp.onreadystatechange = function() {
+		let regional_data;
+		if (this.readyState == 4 && this.status == 200) {
+			if (xhttp.response) {
+				regional_data = (JSON.parse(xhttp.response));
+				if (regional_data.success) {
+					if (regionals.length > 0) {
+						function getProvinceByLocation(province, location) {
+							try {
+								const {lat: latitude, long: longitude} = location;
+								const {max_latitude, min_latitude, max_longitude, min_longitude} = province?.geoDetail;
+								// Check if the latitude and longitude fall within the province's boundaries
+								if (
+									latitude >= min_latitude &&
+									latitude <= max_latitude &&
+									longitude >= min_longitude &&
+									longitude <= max_longitude
+								) {
+									return true;
+								}
+								return false;
+							} catch (error) {
+								return false
+							}
+						}
+
+						var is_country_included = false
+						for (let i = 0; i < regionals.length; i++) {
+							if (regionals[i].regionals) {
+								if (regionals[i].regionals.includes(regional_data.country)) {
+									window.minimum_age = parseInt(regionals[i].min_age)
+									window.verification_option = parseInt(regionals[i].verification_option)
+									window.country_minimum_age = parseInt(regionals[i].min_age)
+									window.country_verification_option = parseInt(regionals[i].verification_option)
+									is_country_included = true
+								}
+							}
+							if (regionals[i].has_provinces && !regional_data.is_enable_geo_coding) {
+								const provinceData = regionals[i].provinces
+								region = provinceData.filter(item => item.selected_provinces.some(province => province.provinceName?.toLowerCase() === regional_data.region?.toLowerCase()))?.pop();
+								region_code = provinceData.filter(item => item.selected_provinces.some(province => province.provinceCode?.toLowerCase() === regional_data.region_code?.toLowerCase()))?.pop();
+								if (typeof region === 'object' && region !== null) {
+									window.minimum_age = parseInt(region.min_age)
+									window.verification_option = parseInt(region.verification_option)
+									is_country_included = true
+								} else if (typeof region_code === 'object' && region_code !== null) {
+									window.minimum_age = parseInt(region.min_age)
+									window.verification_option = parseInt(region.verification_option)
+									is_country_included = true
+								} else {
+									region = provinceData.filter(item => item.selected_provinces.some(province => getProvinceByLocation(province, regional_data?.geoDetail)))?.pop();
+									if (typeof region === 'object' && region !== null) {
+										window.minimum_age = parseInt(region.min_age)
+										is_country_included = true
+									}
+								}
+							}
+						}
+					}
+
+					if (Object.keys(popup_setting).length > 0) {
+						sub_header_text = document.getElementById("preview_sub_header_text")
+						av_failed = document.getElementById("av-failed")
+						sub_header_text.innerHTML = popup_setting.sub_header_text.replace(/\{\{minimum_age\}\}/g, window.minimum_age)
+						if (av_failed !== null && av_failed !== undefined) {
+							av_failed.innerHTML = popup_setting.age_validation_message.replace(/\{\{minimum_age\}\}/g, window.minimum_age)
+						}
+					}
+					if (is_restricted_region && is_country_included) {
+						hulkAVSetPopup(data.popup_setting, data.plan_features, [], window.minimum_age, data.verification_option, {
+							isReadyToShowProvince: regional_data.is_ready_for_province_select,
+							provinceList: regional_data.provinces_list
+						})
+					}
+				} else
+					return;
+			}
+		}
+	}
+	xhttp.open("GET", "https://age-verification.hulkapps.com/api/frontend/hulk_av_is_valid_region?shop="+shop);
+	xhttp.send();
+}
+
+function hulkAVSetPopup(popup_setting, plan_features, regionals, min_age, verification_option, provinceSelectData = null) {
+		//var data = JSON.parse(xhttp.response);
+		var display_popup = false
+		if (popup_setting.popup_display == "specific_page" && plan_features.includes("restrict_specific_pages")) {
+			var page_urls = popup_setting.pages_urls;
+			if (page_urls.split(',').includes(window.location.href) || page_urls.split(',').includes(window.location.href.split('?')[0])){
+				display_popup = true;
+			}
+			if (popup_setting.has_selected_tag_feature) {
+				var isSelectedTag = popup_setting.selected_tags?.split(",").some(item => window.hulk_avt_tags?.some(otherItem => item?.toLowerCase().trim() === otherItem?.toLowerCase().trim()));
+				display_popup = isSelectedTag ? true : display_popup;
+			}
+		} else if (popup_setting.popup_display == "all") {
+			if (popup_setting.has_selected_tag_feature) {
+				var isSelectedTag = popup_setting.selected_tags?.split(",").some(item => window.hulk_avt_tags?.some(otherItem => item?.toLowerCase().trim() === otherItem?.toLowerCase().trim()));
+				display_popup = isSelectedTag;
+			} else {
+				display_popup = true;
+			}
+		} else {
+			display_popup = false;
+		}
+		var hulkVerifiedClick = hulkGetCookie('hulkVerifiedClick');
+		if (hulkVerifiedClick == '' && display_popup == true) {
+			var month = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"];
+			// var popup_setting = popup_setting
+			window.minimum_age = min_age
+			window.verification_option = verification_option
+
+			if(regionals.length > 0){
+				hulkAVIsValidRegion(regionals, false, {}, popup_setting)
+			}
+
+			if(popup_setting['header_text_font_family']){
+				hulkAddCss("https://fonts.googleapis.com/css?family="+popup_setting['header_text_font_family']);
+			}
+			if(popup_setting['sub_header_text_font_family']){
+				hulkAddCss("https://fonts.googleapis.com/css?family="+popup_setting['sub_header_text_font_family']);
+			}
+			if(popup_setting['btn1_text_font_family']){
+				hulkAddCss("https://fonts.googleapis.com/css?family="+popup_setting['btn1_text_font_family']);
+			}
+			if(popup_setting['btn2_text_font_family']){
+				hulkAddCss("https://fonts.googleapis.com/css?family="+popup_setting['btn2_text_font_family']);
+			}
+			var yes = 'true'
+			var no = 'false'
+			var logo_img = ''
+			var birthdate_option = ''
+			var no_input_option = ''
+			var other_option = ''
+			var preview_img = ''
+			if (popup_setting.popup_logo_img && popup_setting.popup_logo_img.url != null)  {
+					var logo_img = '<div class="popup_logo" style="background-color: '+popup_setting.popup_bg_color+';"><img src='+popup_setting.popup_logo_img.url+' alt=""></img></div> '
+				}
+			if(window.verification_option == 'birthdate' && plan_features.includes("verification_by_birthday_input")){
+				var birthdate_option = '<div class="month_box" id="month_box">'
+				if(popup_setting.date_format == "default"){
+					birthdate_option = birthdate_option+'<div class="month_date"> <select id="date_field" class="app-select custom-width"> '
+					for (var day=1;	day <= 31; day++){
+						str_day = '<option value='+day+'>'+day+'</option>'
+						birthdate_option = birthdate_option+str_day;
+					}
+					birthdate_option = birthdate_option+'</select></div><div class="month_date"> <select id="month_field" class="app-select"> '
+					for (var index = 0; index < month.length; index++) {
+						str_month = '<option value='+(parseInt(index)+1)+'> '+month[index]+'</option>'
+						birthdate_option = birthdate_option+str_month;
+					}
+					birthdate_option = birthdate_option+'</select></div><div class="month_date"> <select id="year_field" class="app-select">'
+					for (year = new Date().getFullYear(); year >= 1920; year--){
+						str_year = '<option value='+year+'>'+year+'</option> '
+						birthdate_option = birthdate_option+str_year;
+					}
+				}
+				else if(popup_setting.date_format == "iso") {
+					birthdate_option = birthdate_option+'<div class="month_date"> <select id="year_field" class="app-select">'
+					for (year = new Date().getFullYear(); year >= 1920; year--){
+						str_year = '<option value='+year+'>'+year+'</option>'
+						birthdate_option = birthdate_option+str_year;
+					}
+					birthdate_option = birthdate_option+'</select></div><div class="month_date"> <select id="month_field" class="app-select"> '
+					for (var index in month) {
+						str_month = '<option value='+(parseInt(index)+1)+'> '+month[index]+'</option>'
+						birthdate_option = birthdate_option+str_month;
+					}
+					birthdate_option = birthdate_option+'</select></div><div class="month_date"> <select id="date_field" class="app-select custom-width"> '
+					for (var day=1;	day <= 31; day++){
+						str_day = '<option value='+day+'>'+day+'</option>'
+						birthdate_option = birthdate_option+str_day;
+					}
+				} else {
+					birthdate_option = birthdate_option+'<div class="month_date"> <select id="month_field" class="app-select custom-width"> '
+					for (var index in month) {
+						str_month = '<option value='+(parseInt(index)+1)+'> '+month[index]+'</option>'
+						birthdate_option = birthdate_option+str_month;
+					}
+					birthdate_option = birthdate_option+'</select></div><div class="month_date"> <select class="app-select" id="date_field">';
+					for (var day=1;	day <= 31; day++){
+						str_day = '<option value='+day+'>'+day+'</option>'
+						birthdate_option = birthdate_option+str_day;
+					}
+					birthdate_option = birthdate_option+'</select></div><div class="month_date"> <select id="year_field" class="app-select">'
+					for (year = new Date().getFullYear(); year >= 1920; year--){
+						str_year = '<option value='+year+'>'+year+'</option> '
+						birthdate_option = birthdate_option+str_year;
+					}
+				}
+				birthdate_option = birthdate_option+'</select></div></div>'
+
+				if(provinceSelectData && provinceSelectData["isReadyToShowProvince"]){
+					birthdate_option = birthdate_option+'<div class="month_box province_box"><select id="province_select" class="app-select" style="max-width: 220px !important"><option value="">Select Province</option>'
+					if (provinceSelectData['provinceList']) {
+						provinceSelectData['provinceList'].forEach(province => {
+							str_province = '<option value="'+province.provinceName+'" code="'+province.provinceCode+'">'+province.provinceName+'</option>'
+							birthdate_option = birthdate_option+str_province;
+						})
+					}
+					birthdate_option = birthdate_option + '</select></div><p id="province_failed" class="error_msg" style="color: rgb(238, 51, 51) !important; font-size: 15px !important; display: none;">Please Select Province</p>'
+				}
+				
+				birthdate_option = birthdate_option+'<p id="av-failed" class="error_msg" style="color: rgb(238, 51, 51) !important; font-size: 15px !important; display: none;">'+popup_setting.age_validation_message.replace(/\{\{minimum_age\}\}/g, window.minimum_age)+'</p> <div class="preview_btn" style="background-color: '
+				birthdate_option = birthdate_option+((popup_setting.template == 2 && plan_features.includes("new_present_templates")) ? popup_setting.buttons_background : " transparent ")+';">' +
+				'<span class="main-box-bg" style="border-top-color: '+ popup_setting.popup_bg_color +';"></span>' + 
+				'<div class="normal_btns"><div class="agree"> <button type="button" data-verified="true" class="agree_btn btn_verified"><span>'+ popup_setting.btn1_text +'</span></button></div>' +
+				'<div class="disagree" style="margin-left:15px;"> <button type="button" data-verified="false" class="disagree_btn btn_verified" id="btn_disabled"><span>'+popup_setting.btn2_text +'</span></button></div></div><div class="social_media_btn">';
+				
+				//Social media button
+				if (popup_setting.allow_social_media_login == true){
+					if (popup_setting.google_authentication == true){
+						birthdate_option = birthdate_option + '<div class="google-btn"> <a class="social-btn google-btn" data="google_login"> <img src="https://cdn.shopify.com/s/files/1/0082/5232/5948/files/social-google.png?v=1578384085" loading="lazy" /> </a></div>'
+					}
+					if (popup_setting.facebook_authentication == true){
+						birthdate_option = birthdate_option + '<div class="facebook-btn" data="facebook_login"> <a class="social-btn facebook-btn" data="facebook_login"> <img src="https://cdn.shopify.com/s/files/1/0082/5232/5948/files/social-facebook.png?v=1578384085" loading="lazy" /> </a></div>'
+					}
+				}
+				
+				birthdate_option = birthdate_option + '</div></div>'
+			}
+			else if (window.verification_option == "no_input"){
+				no_input_option = '<div class="preview_btn" style="background-color: '+ ((popup_setting.template == 2 && plan_features.includes("new_present_templates")) ? popup_setting.buttons_background : " transparent ")+';"><span class="main-box-bg" style="border-top-color:'+popup_setting.popup_bg_color+';"></span><div class="normal_btns"><div class="agree"> <button type="button" data-verified="true"  class="agree_btn btn_verified"><span>'+popup_setting.btn1_text+'</span></button></div><div class="disagree" style="margin-left:15px;"> <button type="button" data-verified="false" class="disagree_btn btn_verified" id="btn_disabled"><span>'+popup_setting.btn2_text+'</span></button></div></div></div>'
+
+			} else{
+				if (plan_features.includes("new_present_templates")) {
+					other_option ='<div style="background-color: '+(popup_setting.template == 2 ?popup_setting.buttons_background : " transparent ")+';"><div class="social-buttons">'
+					if (popup_setting.google_authentication == true){
+						other_option = other_option+'<span class="main-box-bg" style="border-top-color: '+popup_setting.popup_bg_color+';"></span><div class="social-btn facebook-btn" data="google_login"> <a href="#"> <img src="https://cdn.shopify.com/s/files/1/0082/5232/5948/files/social-google.png?v=1578384085" loading="lazy" /> </a></div>'
+					}
+					if (popup_setting.facebook_authentication == true) {
+						other_option = other_option+'<div class="social-btn facebook-btn" data="facebook_login"> <a href="#"> <img src="https://cdn.shopify.com/s/files/1/0082/5232/5948/files/social-facebook.png?v=1578384085" loading="lazy" /> </a></div>'
+					}
+						other_option = other_option+'</div><p id="av-failed" class="error_msg" style="color: rgb(238, 51, 51) !important; font-size: 15px !important; padding-bottom: 0; display: none;">'+popup_setting.age_validation_message.replace(/\{\{minimum_age\}\}/g, window.minimum_age)+' </p></div>'
+					} else {
+					other_option = other_option+'<div class="preview_btn" style="background-color: '+((popup_setting.template == 2 && plan_features.includes("new_present_templates")) ? popup_setting.buttons_background : " transparent ")+';"><div class="agree"> <button type="button" data-verified="true"  class="agree_btn btn_verified"><span>'+popup_setting.btn1_text+'</span></button></div><div class="disagree" style="margin-left:15px;"> <button type="button" data-verified="false" class="disagree_btn btn_verified" id="btn_disabled"><span>'+popup_setting.btn2_text+'</span></button></div></div>'
+				}
+			}
+
+			var hulkAgeHTML = '<div class="hulk_age_verify" id="hulk_age_verify"><div class="back_imge '+(plan_features.includes("new_present_templates") ? popup_setting.template == 1 ? "template-1 " : popup_setting.template == 2 ? "template-2 " : "template-3 " : "template-1 ")+'" id="preview_img" class="lazy"><div class="preview_box '+(popup_setting.popup_has_full_width ? "preview_box_full_width" : "")+'"> <section class="preview_box_section"><div class="preview_box_wrap">  '+ logo_img+'<h2 class="pre_title" id="preview_header_text">'+popup_setting.header_text+'</h2><p class="pre_contain" id="preview_sub_header_text"> '+popup_setting.sub_header_text.replace(/\{\{minimum_age\}\}/g, window.minimum_age)+'</p> '+birthdate_option+no_input_option +other_option+'</div> </section></div><div class="av_overlay"></div></div></div>';
+
+				var hulk_body_text = hulkCreateHTMLNode(hulkAgeHTML);
+				document.body.appendChild(hulk_body_text);
+				if (popup_setting.template == 1 || popup_setting.template == 3) {
+					var custom_css = `
+					.preview_box {
+						background-color: ${popup_setting.popup_bg_color};
+						border-radius: ${popup_setting.popup_border_radius}px;
+						border: ${popup_setting.popup_border_width}px solid ${popup_setting.popup_border_color};
+						max-width: ${popup_setting.popup_has_full_width ? 'none' : `${popup_setting.popup_width}px`};
+						max-height: ${popup_setting.popup_has_full_width ? 'none' : `${popup_setting.popup_height}px`};
+						height: ${popup_setting.popup_has_full_width ? '90%' : `${popup_setting.popup_height}px`};
+						padding-bottom: ${popup_setting.popup_top_bottom_padding}px;
+						padding-top: ${popup_setting.popup_top_bottom_padding}px;
+						padding-right: ${popup_setting.popup_left_right_padding}px;
+						padding-left: ${popup_setting.popup_left_right_padding}px;
+						opacity: ${popup_setting.background_card_opacity};
+					}
+					`;
+				}
+				else {
+					var custom_css = `
+					.preview_box {
+						background-color: ${popup_setting.popup_bg_color};
+						border-radius: ${popup_setting.popup_border_radius}px;
+						max-width: ${popup_setting.popup_has_full_width ? 'none' : `${popup_setting.popup_width}px`};
+						max-height: ${popup_setting.popup_has_full_width ? 'none' : `${popup_setting.popup_height}px`};
+						height: ${popup_setting.popup_has_full_width ? '90%' : `${popup_setting.popup_height}px`};
+						opacity: ${popup_setting.background_card_opacity};
+					}`;
+				}
+				if (popup_setting.background_cover_img.url != null){
+					var preview_img = "#preview_img { background-image: url("+popup_setting.background_cover_img.url+"); }"
+				}
+				var monthClass = document.getElementsByClassName('hulk_age_verify');
+
+				var h_fstyle = ""
+				var h_fweight = "700"
+				var s_fweight = "400"
+
+				if (monthClass.length > 0) {
+					 if(popup_setting.header_text_weight == "Light Italic"){
+							h_fstyle = "italic"
+							h_fweight = "300"
+					 }
+					 else if(popup_setting.header_text_weight == "Regular Italic" ){
+						 h_fstyle = "italic"
+							h_fweight = "400"
+					 }
+					 else if(popup_setting.header_text_weight == "Bold Italic"){
+						 h_fstyle = "italic"
+							h_fweight = "700"
+					 }
+					 else if(popup_setting.header_text_weight == "Black Italic"){
+						 h_fstyle = "italic"
+							h_fweight = "900"
+					 }
+					 else if(popup_setting.header_text_weight == "Light"){
+							h_fweight = "300"
+					 }
+					 else if(popup_setting.header_text_weight == "Regular") {
+							h_fweight = "400"
+					 }
+					 else if(popup_setting.header_text_weight == "Bold"){
+							h_fweight = "700"
+					 }
+					else if(popup_setting.header_text_weight == "Black"){
+							h_fweight = "900"
+					 }
+					document.getElementById('preview_header_text').style.fontStyle = h_fstyle;
+					document.getElementById('preview_header_text').style.fontWeight = h_fweight;
+
+					h_fstyle = '';
+					 if(popup_setting.sub_header_text_weight == "Light Italic"){
+						 h_fstyle = "italic"
+							s_fweight = "300"
+					 }
+					 else if(popup_setting.sub_header_text_weight == "Regular Italic" ){
+						 h_fstyle = "italic"
+							s_fweight = "400"
+					 }
+					 else if(popup_setting.sub_header_text_weight == "Bold Italic"){
+						 h_fstyle = "italic"
+							s_fweight = "700"
+					 }
+					 else if(popup_setting.sub_header_text_weight == "Black Italic"){
+						 h_fstyle = "italic"
+							s_fweight = "900"
+					 }
+					 else if(popup_setting.sub_header_text_weight == "Light"){
+							s_fweight = "300"
+					 }
+					 else if(popup_setting.sub_header_text_weight == "Regular") {
+							s_fweight = "400"
+					 }
+					 else if(popup_setting.sub_header_text_weight == "Bold"){
+							s_fweight = "700"
+					 }
+					 else if(popup_setting.sub_header_text_weight == "Black"){
+							s_fweight = "900"
+					 }
+					 document.getElementById('preview_sub_header_text').style.fontStyle = h_fstyle;
+					document.getElementById('preview_sub_header_text').style.fontWeight = s_fweight;
+				}
+
+				var user_selection = custom_css + ' #preview_img.lazy { background-image: none; } '+preview_img+'  #preview_header_text {color: '+popup_setting.header_text_color+' !important; font-family:'+popup_setting.header_text_font_family+'; }#preview_sub_header_text {margin-top: -5px; color: '+popup_setting.sub_header_text_color+' !important;  font-family:'+popup_setting.sub_header_text_font_family+'; } .agree_btn {color: '+popup_setting.btn1_text_color+';border-radius: '+popup_setting.btn1_border_radius+'px;background: '+popup_setting.btn1_bg_color+'; border-width: '+popup_setting.btn1_border_width+'px;border-color: '+popup_setting.btn1_border_color+';font-family: '+popup_setting.btn1_text_font_family+';height: '+ popup_setting.btn1_height + 'px;width: '+popup_setting.btn1_width+'px;} .disagree_btn {color: '+popup_setting.btn2_text_color+';border-radius: '+popup_setting.btn2_border_radius+'px; background: '+popup_setting.btn2_bg_color+';border-width: '+popup_setting.btn2_border_width+'px;border-color: '+popup_setting.btn2_border_color+';font-family: '+popup_setting.btn2_text_font_family+';height: '+ popup_setting.btn2_height +'px;width: '+ popup_setting.btn2_width + 'px;} .av_overlay {display: block !important; opacity: '+popup_setting.background_color_opacity+'; background-color: '+popup_setting.background_bg_color+' } .pre_title { font-size: '+popup_setting.header_text_size+'px} .pre_contain { font-size: '+popup_setting.sub_header_text_size+'px} @media (max-width: 767px){ .pre_title{ font-size: '+popup_setting.mobile_heading_text+'px } .pre_contain{ font-size: '+popup_setting.mobile_sub_heading_text+'px }}';
+
+				var sheet = document.createElement('style')
+				sheet.innerHTML = user_selection;
+				document.body.appendChild(sheet);
+				document.body.classList.add("cus_overflow");
+
+			document.getElementsByClassName("agree_btn")[0]?.addEventListener("click", function(){
+					var provinceSelect = document.getElementById("province_select")
+					if(provinceSelect && provinceSelect.value == ''){
+						document.getElementById("province_failed").style.display = "block";
+						setTimeout(function(){ document.getElementById("province_failed").style.display = "none"; }, 3000);
+						return;
+					}
+				var monthClass = document.getElementsByClassName('month_box');
+				if (window.verification_option != 'no_input') {
+						var year = document.getElementById("year_field").value;
+						var month = document.getElementById("month_field").value;
+						var day = document.getElementById("date_field").value;
+						var age_count = getAge(''+month+'/'+day+'/'+year+'')
+						if(age_count < window.minimum_age ) {
+							document.getElementById("av-failed").style.display = "block";
+							setTimeout(function(){ document.getElementById("av-failed").style.display = "none"; }, 3000);
+						} else {
+							ajaxRequest(true, true);
+						}
+					}
+					else{
+						ajaxRequest(true, true);
+					}
+			});
+
+			document.getElementById("province_select")?.addEventListener("change", function(){
+				const selectElement = document.getElementById("province_select");
+				const selectedRegionValue = selectElement.value
+				const provinceFailed = document.getElementById("province_failed");
+				if(selectedRegionValue == ""){
+					provinceFailed.style.display = "block";
+					return
+				}
+				else{
+					provinceFailed.style.display = "none";
+				}
+				const regionals = window.popup_data?.regionals
+				for( let i = 0;  i < regionals.length; i++){
+					if(regionals[i].has_provinces){
+						const provinceData = regionals[i].provinces
+						region = provinceData.filter(item => item.selected_provinces.some(province => province.provinceName?.toLowerCase() === selectedRegionValue?.toLowerCase()))?.pop();
+						if(typeof region === 'object' && region!== null){
+							window.minimum_age = parseInt(region.min_age)
+							window.verification_option = parseInt(region.verification_option)
+							break;
+						}
+						else{
+							window.minimum_age = window.country_minimum_age
+							window.verification_option = window.country_verification_option
+						}
+					}
+				}
+				document.getElementById("av-failed").innerHTML = window.popup_data?.popup_setting.age_validation_message.replace(/\{\{minimum_age\}\}/g, window.minimum_age)
+			})
+
+			const socialBtns = document.querySelectorAll('.social-btn');
+
+			socialBtns.forEach(function(btn) {
+				btn.addEventListener('click', function() {
+					let login_type = this.getAttribute('data')
+					const currentURL = window.location.href.split('?')[0];
+					window.location.assign(`https://age-verification.hulkapps.com/social_media_login?shop=${Shopify.shop}&login_type=${login_type}&redirect_url=${currentURL}`);
+					hulkSetCookie(login_type, true, 1)
+				});
+			});
+
+			document.getElementsByClassName("disagree_btn")[0]?.addEventListener("click", function(){
+				ajaxRequest(false, false)
+				document.getElementById("btn_disabled").disabled = true;
+			});
+			function ajaxRequest(verified_status, verifier_cookie){
+				var shop = Shopify.shop
+				document.body.classList.remove("cus_overflow");
+				var xhttp = new XMLHttpRequest();
+				xhttp.open("POST", "https://age-verification.hulkapps.com/api/create_verification",true);
+
+				xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+				//xhttp.setRequestHeader("Authorization", data.auth_token)
+				xhttp.send('shop='+shop+'&verified_status='+verified_status+'&verifier_cookie='+verifier_cookie+'');
+				xhttp.onreadystatechange = function() {
+					if (this.readyState == 4 && this.status == 200) {
+						var res = JSON.parse(xhttp.response);
+						var params = res.params;
+						if (params.verified_status == "false"){
+							window.location.assign(popup_setting.exit_url);
+						}
+						if(params.verifier_cookie == 'true'){
+							document.getElementById("hulk_age_verify").style.display = "none";
+							hulkSetCookie('hulkVerifiedClick', 'clicked', popup_setting.cookie_lifetime );
+						}
+					}
+				};
+			}
+
+			function hulkAddCss(fileName) {
+				var head = document.head;
+				var link = document.createElement("link");
+				link.type = "text/css";
+				link.rel = "stylesheet";
+				link.href = fileName;
+				head.appendChild(link);
+			}
+
+			function hulkCreateHTMLNode(htmlCode) {
+				var htmlNode = document.createElement('div');
+				htmlNode.innerHTML = htmlCode;
+				return htmlNode;
+			}
+
+			function getAge(DOB) {
+				var today = new Date();
+				var birthDate = new Date(DOB);
+				var age = today.getFullYear() - birthDate.getFullYear();
+				var m = today.getMonth() - birthDate.getMonth();
+				if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+					age = age - 1;
+				}
+				return age;
+			}
+
+		}
+}
+
+function hulkAVGetPopupRequest(){
+	var shop = Shopify.shop
+	var xhttp = new XMLHttpRequest();
+		
+		xhttp.onreadystatechange = function() {
+			if (this.readyState == 4 && this.status == 200) {
+				if (xhttp.response){
+					var data = JSON.parse(xhttp.response);
+					if (data.is_ready_for_province_select){
+						window.popup_data = {popup_setting: data.popup_setting, plan_features: data.plan_features, min_age: data.min_age, have_any_plan: data.have_any_plan, regionals: data.regionals}
+						window.country_minimum_age = parseInt(data.min_age)
+					}
+					hulkAVSetPopup(data.popup_setting, data.plan_features, [], data.min_age, data.verification_option, {isReadyToShowProvince: data.is_ready_for_province_select, provinceList: data.provinces_list})
+				}
+			}
+		}
+
+		xhttp.open("GET", "https://age-verification.hulkapps.com/api/frontend/get_popup?shop="+shop);
+		xhttp.send();
+}
+
+function hulkSetCookie(cname, cvalue, exdays) {
+	var d = new Date();
+	d.setTime(d.getTime() + (exdays*24*60*60*1000));
+	var expires = "expires="+ d.toUTCString();
+	document.cookie = cname + "=" + cvalue + ";" + expires + ";path=/; samesite=none; secure";
+}
+
+function hulkGetCookie(cname) {
+	var name = cname + "=";
+	var decodedCookie = decodeURIComponent(document.cookie);
+	var ca = decodedCookie.split(';');
+	for(var i = 0; i < ca.length; i++) {
+		var c = ca[i];
+		while (c.charAt(0) == ' ') {
+			c = c.substring(1);
+		}
+		if (c.indexOf(name) == 0) {
+			return c.substring(name.length, c.length);
+		}
+	}
+	return "";
+}
+
+function deleteCookie(cookieName) {
+  document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+}
+
+if (hulkGetCookie("google_login") || hulkGetCookie("facebook_login" || hulkGetCookie('hulkVerifiedClick')== '')){
+	const urlSearchParams = new URLSearchParams(window.location.search);
+	const searchParams = Object.fromEntries(urlSearchParams.entries());
+	const searchKey = 'hulk_valid_age';
+	if (searchKey in searchParams){
+		if(searchParams[searchKey]=='true'){
+			//document.getElementById("hulk_age_verify").style.display = "none";
+			hulkSetCookie('hulkVerifiedClick', 'clicked', parseInt(searchParams['life']) );
+		}
+		else if(searchParams[searchKey]=='false'){
+			setTimeout(function() {
+				document.getElementById("av-failed").style.display = "block";
+			}, 500); 
+		}
+	}
+	deleteCookie('google_login');
+	deleteCookie('facebook_login');
+}
+
+if(window.popup_data){
+	const data = window.popup_data
+	if(data.have_any_plan && data.is_enabled){
+		if (data.popup_setting.selected_country_popup){
+			// $.get("https://ipinfo.io", function(response) {
+			//     console.log(response.city, response.country);
+			// }, "jsonp");
+			// fetch('https://api.ipregistry.co/?key=tryout')
+			    // .then(function (response) {
+			    //     return response.json();
+			    // })
+			    // .then(function (payload) {
+			    //     console.log(payload.location.country.code);
+			    // });
+			if(hulkGetCookie('hulkVerifiedClick')== '')
+				hulkAVIsValidRegion(data.regionals, true, data, {})
+		} else{
+			hulkAVSetPopup(data.popup_setting, data.plan_features, data.regionals, data.min_age, data.verification_option)
+		}
+	}
+} else {
+	hulkAVGetPopupRequest();
+}

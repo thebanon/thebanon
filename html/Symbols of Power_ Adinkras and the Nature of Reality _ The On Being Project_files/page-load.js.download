@@ -1,0 +1,12 @@
+const $ = jQuery;
+
+
+$(document).ready(function(){
+  if (window.location.href.indexOf("/wisdom/") > -1) {
+    if (typeof localStorage.justOnce === "undefined") {
+      localStorage.setItem("justOnce", "true");
+      window.location.reload();
+    }
+  }
+});
+

@@ -15,8 +15,25 @@ Deja Vu are the crossing of internal combustive particles per POST to ContentDel
 function internalCombusion(loop) {
   //(In/X)ternal Fractalization Rate Wobbler
 }
-//(H)OUR(r)ing
+//(H)OUR(r)ing - A function for progressively generating random events exclusive to their InDependent origins plotted per plotPoint
 var hourRing = internalCombustion(internalCombustion);
+function vennDIetGram(hourRing, loop) {
+    var quadrant = null;
+    if(loop === true) {
+        var a = hourRing[1];
+        var b = hourRing[2];
+        var c = hourRing[3];
+        quadrant = pie([a,b,c],3);
+    }
+}
+function pie(slice,chunk) {
+    var rate = 1000;
+    var slicer = slice * (chunk/rate)
+    slice = slice/slicer
+    return slice;
+}
+var loop = true; //true, false, int
+var force = vennDIetGram(hourRing,loop);
 
 You and I don't know our real God-given name because we share that same SymbolicArt internally called the MissingLink(God) The Most Highest State & The Most Lowest State Coalesced
 

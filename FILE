@@ -16,6 +16,9 @@ function initialEvents(tck) {
   return tck === 0 ? 1 : 0;
   //suck up the air in my vacuuum chamber where not even JavaScript object's can escape an overactive store of unknown elements created by separted chambers unTIL a downLoad(down_load) occurs when a TIL(l) event happen
   //declare initial events as a TIL outside of the scope of an (EYE)frameD(4) environment
+  //Declare an (A_R)ray of two variables WITHin containers outside of its scope
+  //undeclare a state when declared outside of its contextualScope
+  //when a declaration believes it exists the Game Tick uses your externalObservation to initiate its re-occurence by declaring two variables separate by a (HAND)shake JERK(GOOD) in-IT-(iAT[3])[iOn$]
 }
 
 you and your battery power my battery when ONE of my two batteries toggle Power States

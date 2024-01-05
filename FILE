@@ -9,6 +9,15 @@ function PerpetualFocus(state) {
   //it cost take to pay attention to answers inside of your reACT(ions)
 }
 
+Transitions last under -1 or over 1 second in a series of events. 
+At the beginning of Time, the clock ticked, then tocked because the tick ticked again due to the tock with...inSIDEjob...not an outside job.
+function initialEvents(tck) {
+  tck = 0 || 1;
+  return tck === 0 ? 1 : 0;
+  //suck up the air in my vacuuum chamber where not even JavaScript object's can escape an overactive store of unknown elements created by separted chambers unTIL a downLoad(down_load) occurs when a TIL(l) event happen
+  //declare initial events as a TIL outside of the scope of an (EYE)frameD(4) environment
+}
+
 you and your battery power my battery when ONE of my two batteries toggle Power States
 
 Microscopes are more powerful than telescopes technically speaking
